@@ -19,6 +19,8 @@ function onOpen() {
     .addItem('Waliduj konfigurację', 'validateEnterpriseConfiguration')
     .addItem('Pokaż diagnostykę', 'showEnterpriseDiagnostics')
     .addItem('Diagnostyka Parsera 4.3', 'showParserDiagnostics')
+    .addItem('Audyt formuł Kruczej', 'auditInventoryFormulaCoverageWithDialog')
+    .addItem('Przywróć formuły Kruczej (z backupem)', 'repairInventoryFormulasWithDialog')
     .addSeparator()
     .addItem('Wyczyść cache katalogu', 'clearProductCatalogCache')
     .addItem('Audyt danych produktów', 'runProductDataAudit')

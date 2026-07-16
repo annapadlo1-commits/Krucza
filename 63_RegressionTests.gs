@@ -49,7 +49,9 @@ function runAllEnterpriseTests() {
     testSparseWritePlan430_,
     testSparseRollback430_,
     testFormulaWriteGuard430_,
-    testStandaloneBarParser430_
+    testStandaloneBarParser430_,
+    testCanonicalInventoryFormulas431_,
+    testFormulaRepairSegments431_
   ];
 
   const results = tests.map(runSingleTest_);
@@ -1093,4 +1095,49 @@ function testFormulaWriteGuard430_() {
     blocked = String(error && error.message || error).indexOf('formułą') >= 0;
   }
   assertCondition_(blocked, 'Zapis do komórki z formułą musi zostać zablokowany przed setValue.');
+}
+
+
+function testCanonicalInventoryFormulas431_() {
+  const normal = {
+    inventoryRow: 3,
+    type: CONFIG.PRODUCT_TYPES.NORMAL,
+    category: 'BITTER'
+  };
+  const beer = {
+    inventoryRow: 190,
+    type: CONFIG.PRODUCT_TYPES.NORMAL,
+    category: 'PIWO'
+  };
+  const location = {
+    inventoryRow: 524,
+    type: CONFIG.PRODUCT_TYPES.LOCATION,
+    category: 'SOFTY'
+  };
+
+  assertCondition_(getCanonicalInventoryFormula_(normal, 'D') === '=B3-C3',
+    'Nieprawidłowa formuła D dla NORMAL.');
+  assertCondition_(getCanonicalInventoryFormula_(normal, 'H') === '=F3*G3',
+    'Nieprawidłowa formuła H dla NORMAL.');
+  assertCondition_(getCanonicalInventoryFormula_(normal, 'I') === '=SUM(D3,E3,H3)',
+    'Nieprawidłowa formuła I dla NORMAL.');
+  assertCondition_(getCanonicalInventoryFormula_(beer, 'I') === '=SUM(D190,H190)',
+    'Nieprawidłowa formuła I dla PIWO.');
+  assertCondition_(getCanonicalInventoryFormula_(location, 'D') === '=SUM(B524,C524)',
+    'Nieprawidłowa formuła D dla LOCATION.');
+}
+
+function testFormulaRepairSegments431_() {
+  const plan = [
+    { row: 3, columnNumber: 4, r1c1: '=RC[-2]-RC[-1]' },
+    { row: 4, columnNumber: 4, r1c1: '=RC[-2]-RC[-1]' },
+    { row: 6, columnNumber: 4, r1c1: '=RC[-2]-RC[-1]' },
+    { row: 3, columnNumber: 8, r1c1: '=RC[-2]*RC[-1]' }
+  ];
+  const segments = buildFormulaRepairSegments_(plan);
+  assertCondition_(segments.length === 3,
+    'Plan powinien zostać podzielony na 3 bloki, otrzymano: ' + segments.length);
+  assertCondition_(segments.some(segment =>
+    segment.columnNumber === 4 && segment.startRow === 3 && segment.endRow === 4
+  ), 'Brakuje wspólnego bloku D3:D4.');
 }

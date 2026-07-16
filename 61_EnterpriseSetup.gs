@@ -1,6 +1,6 @@
 /**
- * Inventory PRO Enterprise v2.1
- * Konfiguracja arkuszy Enterprise.
+ * Inventory PRO 4.3.1
+ * Konfiguracja arkuszy Enterprise z kontrolą kontraktu formuł.
  */
 function enterpriseSetup() {
   const startedAt = Date.now();
@@ -15,6 +15,15 @@ function enterpriseSetup() {
     ensureQualitySettingsSheet_();
     getOrCreateNewProductsSheet_();
     ensureActiveInventorySession_();
+
+    const formulaAuditBefore = auditInventoryFormulaCoverage_();
+    const formulaRepair = formulaAuditBefore.safe
+      ? { changedCells: 0, backupSheetName: '', audit: formulaAuditBefore }
+      : repairInventoryFormulas_({
+          createBackup: true,
+          source: 'enterpriseSetup'
+        });
+
     repairDictionaryCategoriesFromInventory();
     applyInventoryTheme();
     applySavedWorkspaceMode();
@@ -25,7 +34,10 @@ function enterpriseSetup() {
       'Inventory PRO ' + CONFIG.VERSION + ' zostal zainicjalizowany',
       {
         spreadsheetName: spreadsheet.getName(),
-        spreadsheetId: spreadsheet.getId()
+        spreadsheetId: spreadsheet.getId(),
+        repairedFormulaCells: formulaRepair.changedCells,
+        formulaBackupSheet: formulaRepair.backupSheetName,
+        formulasSafe: formulaRepair.audit && formulaRepair.audit.safe
       },
       Date.now() - startedAt
     );
@@ -39,6 +51,9 @@ function enterpriseSetup() {
     return {
       success: true,
       version: CONFIG.VERSION,
+      repairedFormulaCells: formulaRepair.changedCells,
+      formulaBackupSheet: formulaRepair.backupSheetName,
+      formulasSafe: formulaRepair.audit && formulaRepair.audit.safe,
       durationMs: Date.now() - startedAt
     };
   } catch (error) {
