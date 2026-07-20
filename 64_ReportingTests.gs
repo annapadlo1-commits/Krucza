@@ -45,3 +45,11 @@ function testReportingReadOnlyContract290_() {
     if (source.indexOf(token) !== -1) throw new Error('Silnik raportowy zawiera operację zapisu: ' + token);
   });
 }
+
+/** Helper wymagany przez Health Check; sprawdza kontrakt raportowania bez zapisu do arkusza. */
+function testReportSheet_() {
+  testReportingSummaryColumns290_();
+  testReportingAllowedCategories290_();
+  testReportingReadOnlyContract290_();
+  return true;
+}

@@ -20,8 +20,24 @@ function readInventorySummaryItem_(sheet, product) {
   if (!sheet || !product || !product.inventoryRow) return null;
 
   const type = String(product.type || '').trim().toUpperCase();
-  const layout = getInventorySummaryLayout_(type);
   const row = Number(product.inventoryRow);
+  if (isDirectFinalInventoryProduct_(product)) {
+    const directValue = readCellNumberOrBlank_(sheet, 'B', row);
+    return {
+      key: product.normalizedName || normalizeText(product.name),
+      product: product.name,
+      category: normalizeBusinessCategory_(product.category) || String(product.category || '').trim(),
+      type: type,
+      inventoryRow: row,
+      unit: 'kg',
+      finalTotal: directValue,
+      total: directValue,
+      details: { directFinal: directValue },
+      cells: { finalTotal: 'B' + row, directFinal: 'B' + row },
+      hasValue: directValue !== ''
+    };
+  }
+  const layout = getInventorySummaryLayout_(type);
   const item = {
     key: product.normalizedName || normalizeText(product.name),
     product: product.name,
@@ -78,6 +94,7 @@ function readCellNumberOrBlank_(sheet, column, row) {
 }
 
 function verifyInventoryFormulaSafety_(sheet, product) {
+  if (isDirectFinalInventoryProduct_(product)) return [];
   const type = String(product.type || '').trim().toUpperCase();
   const layout = getInventorySummaryLayout_(type);
   const row = Number(product.inventoryRow);

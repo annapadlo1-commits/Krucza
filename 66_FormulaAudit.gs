@@ -7,6 +7,7 @@
  */
 
 function getInventoryFormulaContract_(product) {
+  if (isDirectFinalInventoryProduct_(product)) return [];
   const row = Number(product && product.inventoryRow) || 0;
   const type = String(product && product.type || '').toUpperCase();
   const category = normalizeText(product && product.category || '');
@@ -71,6 +72,25 @@ function normalizeInventoryFormula_(formula) {
     .toUpperCase();
 }
 
+function stripInventoryFormulaOuterParentheses_(formula) {
+  let normalized = normalizeInventoryFormula_(formula);
+  while (normalized.indexOf('=(') === 0 && normalized.charAt(normalized.length - 1) === ')') {
+    normalized = '=' + normalized.slice(2, -1);
+  }
+  return normalized;
+}
+
+/** Akceptuje równoważny zapis SUM(A,B,C) jako A+B+C, bez zmiany komórki. */
+function isEquivalentInventoryFormula_(actual, expected) {
+  const left = stripInventoryFormulaOuterParentheses_(actual);
+  const right = stripInventoryFormulaOuterParentheses_(expected);
+  if (left === right) return true;
+  const match = right.match(/^=SUM\(([^()]+)\)$/);
+  if (!match) return false;
+  const additive = '=' + match[1].split(',').map(part => part.trim()).filter(Boolean).join('+');
+  return left === stripInventoryFormulaOuterParentheses_(additive);
+}
+
 function isSpreadsheetFormulaError_(displayValue) {
   return /^#(?:REF!|VALUE!|DIV\/0!|N\/A|NAME\?|NUM!|NULL!|ERROR!)$/i
     .test(String(displayValue || '').trim());
@@ -112,7 +132,7 @@ function buildInventoryFormulaAudit_(sheet, products) {
         missing.push(issue);
       } else {
         presentFormulaCells++;
-        if (normalizeInventoryFormula_(actual) !== normalizeInventoryFormula_(contract.formula)) {
+        if (!isEquivalentInventoryFormula_(actual, contract.formula)) {
           invalid.push(issue);
         }
       }

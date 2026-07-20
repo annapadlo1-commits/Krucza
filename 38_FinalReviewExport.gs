@@ -211,6 +211,9 @@ function buildFinalInventorySnapshot_(sourceSheetName) {
 
 function buildLegacyReviewValues_(summaryItem) {
   const details = summaryItem.details || {};
+  if (isDirectFinalInventoryProduct_({name: summaryItem.product})) {
+    return { 'Stan końcowy': normalizeReportNumber_(summaryItem.finalTotal) };
+  }
   if (summaryItem.type === CONFIG.PRODUCT_TYPES.LOCATION) {
     const values = {};
     getLocationAreaDefinitions_().forEach(area => {
@@ -245,6 +248,9 @@ function buildLegacyReviewValues_(summaryItem) {
 
 function buildEditableReviewCells_(summaryItem) {
   const cells = summaryItem.cells || {};
+  if (isDirectFinalInventoryProduct_({name: summaryItem.product})) {
+    return { 'Stan końcowy': cells.directFinal || cells.finalTotal };
+  }
   if (summaryItem.type === CONFIG.PRODUCT_TYPES.LOCATION) {
     const editable = {};
     getLocationAreaDefinitions_().forEach(area => {
@@ -267,6 +273,12 @@ function buildEditableReviewCells_(summaryItem) {
 
 function applySummaryWarnings_(item, settings) {
   const details = item.details || {};
+  if (isDirectFinalInventoryProduct_({name: item.product})) {
+    if (settings.warnZero && item.finalTotal !== '' && Number(item.finalTotal) === 0) {
+      item.flags.push('WPROWADZONO 0');
+    }
+    return;
+  }
   if (item.type === CONFIG.PRODUCT_TYPES.LOCATION) {
     getLocationAreaDefinitions_().forEach(area => {
       const value = details[area.columnKey];

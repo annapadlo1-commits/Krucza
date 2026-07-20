@@ -51,7 +51,8 @@ function runAllEnterpriseTests() {
     testFormulaWriteGuard430_,
     testStandaloneBarParser430_,
     testCanonicalInventoryFormulas431_,
-    testFormulaRepairSegments431_
+    testFormulaRepairSegments431_,
+    runKruczaCoffeeDirectFinalTests4310
   ];
 
   const results = tests.map(runSingleTest_);
@@ -1077,24 +1078,26 @@ function testSparseRollback430_() {
 }
 
 function testFormulaWriteGuard430_() {
+  let setValueCalled = false;
   const sheet = {
     getRange: function() {
       return {
         getFormula: function() { return '=A1'; },
         getValue: function() { return 0; },
-        setValue: function() { throw new Error('setValue nie powinno zostać wywołane.'); }
+        setValue: function() { setValueCalled = true; }
       };
     }
   };
   let blocked = false;
   try {
     writeSparseWritePlan_(sheet, [
-      { a1:'D10', previousValue:0, newValue:1 }
+      { a1:'D10', row:10, column:'D', previousValue:0, newValue:1, product:'Test', productType:CONFIG.PRODUCT_TYPES.NORMAL }
     ]);
   } catch (error) {
-    blocked = String(error && error.message || error).indexOf('formułą') >= 0;
+    const message = String(error && error.message || error);
+    blocked = message.indexOf('formułą') >= 0 || message.indexOf('kolumny obliczeniowej') >= 0;
   }
-  assertCondition_(blocked, 'Zapis do komórki z formułą musi zostać zablokowany przed setValue.');
+  assertCondition_(blocked && !setValueCalled, 'Zapis do komórki z formułą musi zostać zablokowany przed setValue.');
 }
 
 

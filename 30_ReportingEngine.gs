@@ -95,9 +95,27 @@ function generateInventoryReport_(sourceSheetName) {
 
 function readInventorySummaryItemFromMatrix_(values, product, category) {
   const type = String(product.type || '').trim().toUpperCase();
-  const layout = getInventorySummaryLayout_(type);
   const row = Number(product.inventoryRow);
   const rowValues = values[row - 1] || [];
+  if (isDirectFinalInventoryProduct_(product)) {
+    const directValue = matrixValueOrBlank_(rowValues, 'B');
+    const directItem = {
+      key: product.normalizedName || normalizeText(product.name),
+      product: product.name,
+      category: category,
+      type: type,
+      inventoryRow: row,
+      unit: 'kg',
+      finalTotal: directValue,
+      total: directValue,
+      details: { directFinal: directValue },
+      cells: { finalTotal: 'B' + row, directFinal: 'B' + row }
+    };
+    directItem.values = { 'Stan końcowy': directValue };
+    directItem.hasValue = directValue !== '';
+    return directItem;
+  }
+  const layout = getInventorySummaryLayout_(type);
 
   const item = {
     key: product.normalizedName || normalizeText(product.name),

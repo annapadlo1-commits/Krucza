@@ -1,5 +1,23 @@
 /** Inventory PRO 4.3 — jedno źródło prawdy dla układu INWENTURY. */
 
+/**
+ * Wyjątki Kruczej: dwa końcowe produkty KAWA nie korzystają z formuł.
+ * Wartość wpisana do B jest jednocześnie wartością finalną raportu.
+ */
+function isDirectFinalInventoryProduct_(product) {
+  const name = normalizeText(product && (product.name || product.product) || '');
+  return [
+    'kawa coffelab santos 1kg',
+    'kawa coffelab santos 1 kg',
+    'kawa coffelab przelew 0 5kg',
+    'kawa coffelab przelew 0 5 kg'
+  ].indexOf(name) >= 0;
+}
+
+function getDirectFinalInventoryColumn_(product) {
+  return isDirectFinalInventoryProduct_(product) ? 'B' : '';
+}
+
 function getConfiguredInventoryLayout_(productType) {
   const type = String(productType || '').trim().toUpperCase();
   const configured = CONFIG.INVENTORY_LAYOUT && CONFIG.INVENTORY_LAYOUT[type];
@@ -53,6 +71,14 @@ function isAllowedInputColumnForProductType_(productType, column) {
 }
 
 function assertSafeInventoryTargetColumn_(product, column) {
+  const directFinal = getDirectFinalInventoryColumn_(product);
+  const wantedDirect = normalizeColumnLetter_(column);
+  if (directFinal) {
+    if (wantedDirect !== directFinal) {
+      throw new Error('Produkty KAWA Kruczej z wierszy 562–563 mogą być zapisywane wyłącznie do kolumny B.');
+    }
+    return directFinal;
+  }
   const type = String(product && product.type || '').trim().toUpperCase();
   const wanted = normalizeColumnLetter_(column);
   const name = String(product && product.name || '').trim() || 'nieznany produkt';

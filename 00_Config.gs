@@ -7,7 +7,7 @@ const CONFIG = Object.freeze({
     NUMBER: 2,
     NEXT_LOCATION: 'PAWILONY'
   }),
-  VERSION: '4.3.9-SAFE-MODE-KRUCZA',
+  VERSION: '4.3.11-SAFE-MODE-KRUCZA',
   SHEETS: Object.freeze({
     INVENTORY: 'INWENTURA tajniak',
     DICTIONARY: 'Slownik',
