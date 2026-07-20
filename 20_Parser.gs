@@ -63,7 +63,7 @@ function parseInventoryTextContinuous_(inputText, runtimeContext) {
   while (position < tokens.length) {
     const connector = normalizeWordForParser_(tokens[position]);
 
-    if (isConnectorWord_(connector)) {
+    if (isConnectorWord_(connector) || isQuantityUnitWord_(connector)) {
       position++;
       continue;
     }
@@ -227,6 +227,9 @@ function findDictionaryFirstInventoryEntryAt_(tokens, startPosition, context) {
   const explicitLocation = readLocationAt_(tokens, span.endPosition);
   const numberPosition = span.endPosition + (explicitLocation ? explicitLocation.consumed : 0);
   const number = readNumberAt_(tokens, numberPosition);
+  const quantityUnitConsumed = number && isQuantityUnitWord_(
+    normalizeWordForParser_(tokens[numberPosition + number.consumed] || '')
+  ) ? 1 : 0;
   // Nie zatwierdzamy krótszej nazwy bez wartości, jeżeli po niej pozostaje
   // dalsza część wpisu. Przykład krytyczny:
   //   magazyn Inne beczki Pilsner 2
@@ -243,12 +246,26 @@ function findDictionaryFirstInventoryEntryAt_(tokens, startPosition, context) {
     return null;
   }
   return {
-    originalInput: tokens.slice(startPosition, number ? numberPosition + number.consumed : numberPosition).join(' '),
+    originalInput: tokens.slice(
+      startPosition,
+      number ? numberPosition + number.consumed + quantityUnitConsumed : numberPosition
+    ).join(' '),
     product: span.product.name,
     value: number ? number.value : null,
-    nextPosition: number ? numberPosition + number.consumed : numberPosition,
+    nextPosition: number ? numberPosition + number.consumed + quantityUnitConsumed : numberPosition,
     location: explicitLocation ? explicitLocation.location : ''
   };
+}
+
+/**
+ * Odmiany jednostki sztuk występujące w transkrypcjach głosowych.
+ * Jednostka po wartości należy do bieżącej pozycji i nigdy nie może
+ * rozpocząć kolejnego, fałszywego produktu.
+ */
+function isQuantityUnitWord_(value) {
+  return ['szt', 'sztuka', 'sztuke', 'sztuki', 'sztuk'].includes(
+    normalizeWordForParser_(value)
+  );
 }
 
 function findLongestExactCatalogSpanAt_(tokens, startPosition, context) {
@@ -458,7 +475,11 @@ function findBestInventoryEntryAt_(tokens, startPosition, context) {
       originalProduct: originalProduct,
       product: canonicalMatchedProductName_(parserMatch),
       number: number,
-      nextPosition: numberPosition + number.consumed,
+      nextPosition: numberPosition + number.consumed + (
+        isQuantityUnitWord_(
+          normalizeWordForParser_(tokens[numberPosition + number.consumed] || '')
+        ) ? 1 : 0
+      ),
       score: score,
       match: match
     });

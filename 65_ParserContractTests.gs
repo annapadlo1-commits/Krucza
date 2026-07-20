@@ -16,6 +16,7 @@ function runParserContractTests() {
     parserContractHardNewlineBoundary_,
     parserContractLeadingValue_,
     parserContractValueAfterProduct_,
+    parserContractQuantityUnitSuffix_,
     parserContractNoCrossLineLeakage_,
     parserContractNumericVariant_,
     parserContractLocationSection_
@@ -173,6 +174,20 @@ function parserContractValueAfterProduct_() {
     parseInventoryText('Campari 1,239', context),
     [{ product: 'Campari 0,7 l', value: 1.239 }],
     'Wartosc po produkcie'
+  );
+}
+
+function parserContractQuantityUnitSuffix_() {
+  const context = createParserTestContext_([
+    'Fritz 200ml KOLA BEZ CUKRU'
+  ]);
+  context.catalog[0].aliases = ['kola zero'];
+  context.parserPhraseIndex = null;
+
+  assertParserContract_(
+    parseInventoryText('kola zero 7 sztuk', context),
+    [{ product: 'Fritz 200ml KOLA BEZ CUKRU', value: 7 }],
+    'Jednostka sztuk po wartosci'
   );
 }
 
