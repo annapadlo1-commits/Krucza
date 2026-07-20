@@ -1,6 +1,7 @@
 /**
- * Inventory PRO Enterprise v2.1.3 Recovery
- * Szybki zapis kolumnami zamiast setValue dla kazdej pozycji.
+ * Inventory PRO 4.3.4 — bezpieczny, selektywny zapis KRUCZEJ.
+ * Odczyt buforów służy wyłącznie do obliczania sum, a zapis obejmuje tylko
+ * konkretne komórki wejściowe. Kolumny formuł są chronione kontraktem typu.
  */
 
 function saveImportItems(items) {
@@ -59,7 +60,7 @@ function saveImportItems(items) {
     writeSparseWritePlan_(sheet, writePlan);
 
     SpreadsheetApp.flush();
-    appendImportHistory_(importId, results);
+    appendImportHistory_(importId, results, sheet.getName());
 
     let learnedAliasesCount = 0;
     try {
@@ -122,7 +123,9 @@ function buildSparseWritePlan_(results) {
         row: Number(result.row),
         column: column,
         previousValue: result.previousValue,
-        newValue: result.newValue
+        newValue: result.newValue,
+        product: result.product || '',
+        productType: result.productType || ''
       };
     } else {
       byCell[key].newValue = result.newValue;
@@ -136,6 +139,18 @@ function buildSparseWritePlan_(results) {
 
 function writeSparseWritePlan_(sheet, plan) {
   const prepared = (plan || []).map(change => {
+    if (isFormulaColumnForProductType_(change.productType, change.column)) {
+      throw new Error(
+        'Zablokowano zapis do kolumny obliczeniowej ' + change.column +
+        ' dla typu ' + change.productType + ' (' + (change.product || 'produkt') + ').'
+      );
+    }
+    if (!isAllowedInputColumnForProductType_(change.productType, change.column)) {
+      throw new Error(
+        'Zablokowano zapis do niedozwolonej kolumny ' + change.column +
+        ' dla typu ' + change.productType + ' (' + (change.product || 'produkt') + ').'
+      );
+    }
     const range = sheet.getRange(change.a1);
     const formula = range.getFormula();
     if (formula) {
@@ -190,14 +205,6 @@ function inventoryCellValuesEqual_(left, right) {
   return String(left) === String(right);
 }
 
-function cloneColumnBuffers_(buffers) {
-  const clone = {};
-  Object.keys(buffers || {}).forEach(column => {
-    clone[column] = (buffers[column] || []).map(row => [row[0]]);
-  });
-  return clone;
-}
-
 function collectUsedTargetColumns_(
   items,
   productIndex
@@ -230,7 +237,8 @@ function collectUsedTargetColumns_(
     );
 
     if (column) {
-      columns[column] = true;
+      const safeColumn = assertSafeInventoryTargetColumn_(product, column);
+      columns[safeColumn] = true;
     }
   });
 
@@ -251,18 +259,6 @@ function loadColumnBuffers_(
   });
 
   return buffers;
-}
-
-function writeColumnBuffers_(
-  sheet,
-  buffers,
-  lastRow
-) {
-  Object.keys(buffers).forEach(column => {
-    sheet
-      .getRange(column + '1:' + column + lastRow)
-      .setValues(buffers[column]);
-  });
 }
 
 function prepareSingleImportWrite_(
@@ -351,10 +347,13 @@ function prepareSingleImportWrite_(
     value,
     item.location
   );
+  const safeTargetColumn = targetColumn
+    ? assertSafeInventoryTargetColumn_(product, targetColumn)
+    : '';
 
   if (
-    !targetColumn ||
-    !columnBuffers[targetColumn]
+    !safeTargetColumn ||
+    !columnBuffers[safeTargetColumn]
   ) {
     return createWriteResult_(
       originalInput,
@@ -365,7 +364,7 @@ function prepareSingleImportWrite_(
 
   const bufferIndex = product.inventoryRow - 1;
   const previousRaw =
-    columnBuffers[targetColumn][bufferIndex][0];
+    columnBuffers[safeTargetColumn][bufferIndex][0];
 
   const previousNumericValue =
     typeof previousRaw === 'number' &&
@@ -375,7 +374,7 @@ function prepareSingleImportWrite_(
 
   const newValue = previousNumericValue + value;
 
-  columnBuffers[targetColumn][bufferIndex][0] =
+  columnBuffers[safeTargetColumn][bufferIndex][0] =
     newValue;
 
   return {
@@ -383,7 +382,8 @@ function prepareSingleImportWrite_(
     product: product.name,
     saved: true,
     row: product.inventoryRow,
-    column: targetColumn,
+    column: safeTargetColumn,
+    productType: String(product.type || '').toUpperCase(),
     // Zachowujemy dokładny stan komórki. Pusta komórka musi po cofnięciu
     // ponownie być pusta, a nie zawierać techniczne zero użyte do obliczeń.
     previousValue: previousRaw === null || previousRaw === undefined ? '' : previousRaw,
@@ -398,13 +398,15 @@ function prepareSingleImportWrite_(
     duplicateWarning: false,
     message:
       'Zapisano do ' +
-      targetColumn +
+      safeTargetColumn +
       product.inventoryRow +
       (quality.warning ? ' | ' + quality.message : '')
   };
 }
 
 function resolveTargetColumn_(product, value, location) {
+  const directFinal = getDirectFinalInventoryColumn_(product);
+  if (directFinal) return directFinal;
   const type = String(product.type || '').toUpperCase();
   const isWholeNumber = Number.isInteger(value);
 
@@ -433,6 +435,7 @@ function createWriteResult_(
   return {
     originalInput: originalInput,
     product: '',
+    productType: '',
     saved: saved,
     row: null,
     column: '',

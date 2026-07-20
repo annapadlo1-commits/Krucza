@@ -143,6 +143,10 @@ function rollbackInventoryFormulaRepairPlan_(sheet, plan) {
 }
 
 function repairInventoryFormulas_(options) {
+  throw new Error(
+    'Automatyczna naprawa formuł jest wyłączona w wersji 4.3.7 SAFE MODE. ' +
+    'Funkcja nie wykonała żadnego zapisu.'
+  );
   const settings = options || {};
   const lock = LockService.getDocumentLock();
   const startedAt = Date.now();
@@ -231,6 +235,13 @@ function repairInventoryFormulas_(options) {
 }
 
 function repairInventoryFormulasWithDialog() {
+  SpreadsheetApp.getUi().alert(
+    'Inventory PRO — naprawa formuł wyłączona',
+    'Automatyczna naprawa formuł jest wyłączona w wersji 4.3.7 SAFE MODE. Nie wykonano żadnego zapisu.',
+    SpreadsheetApp.getUi().ButtonSet.OK
+  );
+  return { success: false, disabled: true, changedCells: 0 };
+  /* Kod historyczny pozostaje poniżej nieosiągalny wyłącznie do porównania migracji. */
   return runSafely_(
     'FormulaRepair',
     'repairInventoryFormulasWithDialog',

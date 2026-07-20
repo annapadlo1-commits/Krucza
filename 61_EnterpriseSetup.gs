@@ -17,12 +17,13 @@ function enterpriseSetup() {
     ensureActiveInventorySession_();
 
     const formulaAuditBefore = auditInventoryFormulaCoverage_();
-    const formulaRepair = formulaAuditBefore.safe
-      ? { changedCells: 0, backupSheetName: '', audit: formulaAuditBefore }
-      : repairInventoryFormulas_({
-          createBackup: true,
-          source: 'enterpriseSetup'
-        });
+    const formulaRepair = { changedCells: 0, backupSheetName: '', audit: formulaAuditBefore };
+    if (!formulaAuditBefore.safe) {
+      throw new Error(
+        'Enterprise Setup przerwany bez modyfikowania formuł. ' +
+        'Automatyczna naprawa jest wyłączona w wersji SAFE MODE.'
+      );
+    }
 
     repairDictionaryCategoriesFromInventory();
     applyInventoryTheme();
@@ -54,6 +55,7 @@ function enterpriseSetup() {
       repairedFormulaCells: formulaRepair.changedCells,
       formulaBackupSheet: formulaRepair.backupSheetName,
       formulasSafe: formulaRepair.audit && formulaRepair.audit.safe,
+      automaticFormulaRepairEnabled: false,
       durationMs: Date.now() - startedAt
     };
   } catch (error) {
