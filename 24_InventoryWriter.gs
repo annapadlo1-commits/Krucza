@@ -63,8 +63,14 @@ function saveImportItems(items) {
     appendImportHistory_(importId, results, sheet.getName());
 
     let learnedAliasesCount = 0;
+    let protectedFamilyAliasesCount = 0;
     try {
-      learnedAliasesCount = saveAliasesBatch_(collectAliasSuggestions_(items));
+      const aliasSuggestions = collectAliasSuggestions_(items);
+      protectedFamilyAliasesCount = countProtectedAliasSuggestions_(
+        aliasSuggestions,
+        runtimeContext
+      );
+      learnedAliasesCount = saveAliasesBatch_(aliasSuggestions);
     } catch (aliasError) {
       logWarning(
         'InventoryWriter', 'saveImportItems',
@@ -79,6 +85,7 @@ function saveImportItems(items) {
       savedCount: savedCount,
       skippedCount: skippedCount,
       learnedAliasesCount: learnedAliasesCount,
+      protectedFamilyAliasesCount: protectedFamilyAliasesCount,
       duplicateGroupCount: countSavedDuplicateGroups_(results),
       warningCount: results.filter(result => result.qualityWarning).length,
       results: results,

@@ -16,6 +16,36 @@ function runInventory42Tests() {
   const allowed = validateAliasSuggestion_({ alias: 'bakardi 8', product: 'Bacardi 8' }, context, {});
   assertCondition_(allowed.valid, 'Bezpieczny alias z numerem wariantu powinien byc dozwolony.');
 
+  const capacityContext = createParserTestContext_([
+    'Fernet Branca 0,7L',
+    'Fernet Branca 1L'
+  ]);
+  const familyAlias = validateAliasSuggestion_(
+    { alias: 'fernet branka', product: 'Fernet Branca 0,7L' },
+    capacityContext,
+    {}
+  );
+  assertCondition_(
+    !familyAlias.valid && familyAlias.protectedFamily,
+    'Alias rodzinny bez pojemnosci musi pozostac wyborem.'
+  );
+  assertCondition_(
+    validateAliasSuggestion_(
+      { alias: 'fernet branka zero siedem', product: 'Fernet Branca 0,7L' },
+      capacityContext,
+      {}
+    ).valid,
+    'Alias slowny z pojemnoscia powinien zostac zapamietany.'
+  );
+  assertCondition_(
+    validateAliasSuggestion_(
+      { alias: 'fernet branka litr', product: 'Fernet Branca 1L' },
+      capacityContext,
+      {}
+    ).valid,
+    'Alias z jednostka litr powinien zostac zapamietany.'
+  );
+
   const historyRows = [
     release42HistoryRow_('IMP-TEST', 10, 'B', '', 2),
     release42HistoryRow_('IMP-TEST', 10, 'B', 2, 5),
