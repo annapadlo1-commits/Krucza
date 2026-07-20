@@ -52,7 +52,8 @@ function runAllEnterpriseTests() {
     testStandaloneBarParser430_,
     testCanonicalInventoryFormulas431_,
     testFormulaRepairSegments431_,
-    runKruczaCoffeeDirectFinalTests4310
+    runKruczaCoffeeDirectFinalTests4310,
+    testXlsxExportWithoutDriveApi4312_
   ];
 
   const results = tests.map(runSingleTest_);

@@ -448,7 +448,9 @@ function writeExportTable_(sheet, headers, rows, headerColor) {
 }
 
 function exportSpreadsheetAsXlsx_(spreadsheet, exportId) {
-  const url = 'https://www.googleapis.com/drive/v3/files/' + spreadsheet.getId() + '/export?mimeType=' + encodeURIComponent('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  // Eksport przez natywny endpoint Arkuszy nie wymaga włączonego
+  // zaawansowanego Google Drive API w projekcie Apps Script.
+  const url = buildSpreadsheetXlsxExportUrl_(spreadsheet.getId());
   const response = UrlFetchApp.fetch(url, {
     headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
     muteHttpExceptions: true
@@ -459,7 +461,16 @@ function exportSpreadsheetAsXlsx_(spreadsheet, exportId) {
   }
 
   const blob = response.getBlob().setName(exportId + '.xlsx');
+  if (!blob.getBytes().length) {
+    throw new Error('Nie udało się wygenerować XLSX: serwer zwrócił pusty plik.');
+  }
   return getExportFolder_().createFile(blob);
+}
+
+function buildSpreadsheetXlsxExportUrl_(spreadsheetId) {
+  return 'https://docs.google.com/spreadsheets/d/' +
+    encodeURIComponent(String(spreadsheetId || '')) +
+    '/export?format=xlsx';
 }
 
 function getExportFolder_() {
