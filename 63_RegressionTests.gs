@@ -53,7 +53,8 @@ function runAllEnterpriseTests() {
     testCanonicalInventoryFormulas431_,
     testFormulaRepairSegments431_,
     runKruczaCoffeeDirectFinalTests4310,
-    testXlsxExportWithoutDriveApi4312_
+    testXlsxExportWithoutDriveApi4312_,
+    runKruczaProductManagerSafetyTests4314
   ];
 
   const results = tests.map(runSingleTest_);

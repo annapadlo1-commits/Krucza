@@ -34,7 +34,7 @@ function getProductManagerData() {
           normalizedName: config.normalizedName,
           type: config.type,
           category: config.category,
-          columns: config.columns,
+          columns: getProductManagerDisplayColumns_(config),
           active: config.active,
           dictionaryRow: config.dictionaryRow,
           inventoryRow: activeProduct && activeProduct.inventoryRow
@@ -73,6 +73,13 @@ function getProductManagerData() {
     },
     'Nie udalo sie wczytac katalogu produktow.'
   );
+}
+
+function getProductManagerDisplayColumns_(product) {
+  if (isDirectFinalInventoryProduct_(product)) {
+    return { quantity:'B', weight:'', warehouse:'', darkroom:'', fridges:'' };
+  }
+  return cloneProductColumns_(product && product.columns);
 }
 
 function loadInventoryRowMapForManager_() {
@@ -236,15 +243,9 @@ function validateProductManagerPayload_(payload) {
     fridges: normalizeColumnLetter_(sourceColumns.fridges)
   };
 
-  if (type === CONFIG.PRODUCT_TYPES.NORMAL && !columns.quantity && !columns.weight) {
-    throw new Error('Produkt NORMAL musi miec kolumne sztuk lub wagi.');
-  }
-  if (type === CONFIG.PRODUCT_TYPES.KEG && !columns.quantity && !columns.weight) {
-    throw new Error('Produkt KEG musi miec kolumne pelnych kegow lub wagi.');
-  }
-  if (type === CONFIG.PRODUCT_TYPES.LOCATION &&
-      !columns.warehouse && !columns.darkroom && !columns.fridges) {
-    throw new Error('Produkt LOCATION musi miec co najmniej jedna kolumne lokalizacji.');
+  const mapping = validateProductColumnMapping_(type, columns, { name: name, type: type });
+  if (!mapping.valid) {
+    throw new Error('Nieprawidłowe mapowanie kolumn: ' + mapping.errors.join(' '));
   }
 
   return {
@@ -252,7 +253,7 @@ function validateProductManagerPayload_(payload) {
     name: name,
     type: type,
     category: category,
-    columns: columns,
+    columns: mapping.columns,
     active: Boolean(data.active)
   };
 }

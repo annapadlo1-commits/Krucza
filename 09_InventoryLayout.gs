@@ -103,6 +103,59 @@ function cloneProductColumns_(columns) {
   };
 }
 
+/** Centralna walidacja mapowania używana również przez Product Manager. */
+function validateProductColumnMapping_(productType, columns, product) {
+  const type = String(productType || '').trim().toUpperCase();
+  const source = cloneProductColumns_(columns);
+  const errors = [];
+
+  if (isDirectFinalInventoryProduct_(product)) {
+    const directColumn = getDirectFinalInventoryColumn_(product);
+    if (source.quantity !== directColumn) {
+      errors.push('Wyjątek finalny musi mieć kolumnę sztuk ' + directColumn + '.');
+    }
+    ['weight', 'warehouse', 'darkroom', 'fridges'].forEach(key => {
+      if (source[key]) errors.push('Wyjątek finalny nie może używać pola „' + key + '”.');
+    });
+    return { valid: errors.length === 0, errors: errors, columns: source };
+  }
+
+  const allowed = getAllowedInputColumnsForProductType_(type);
+  const formulas = getFormulaColumnsForProductType_(type);
+  const used = {};
+  Object.keys(source).forEach(key => {
+    const column = normalizeColumnLetter_(source[key]);
+    if (!column) return;
+    if (formulas.indexOf(column) >= 0) {
+      errors.push('Pole „' + key + '” wskazuje kolumnę formuły ' + column + '.');
+    }
+    if (allowed.indexOf(column) < 0) {
+      errors.push('Pole „' + key + '” wskazuje niedozwoloną kolumnę ' + column + '.');
+    }
+    if (used[column]) {
+      errors.push('Kolumna ' + column + ' została przypisana do więcej niż jednego pola.');
+    }
+    used[column] = key;
+  });
+
+  if (type === CONFIG.PRODUCT_TYPES.LOCATION) {
+    if (!source.warehouse && !source.darkroom && !source.fridges) {
+      errors.push('Produkt LOCATION musi mieć co najmniej jedną kolumnę lokalizacji.');
+    }
+    if (source.quantity || source.weight) {
+      errors.push('Produkt LOCATION nie może korzystać z pól ilości/wagi.');
+    }
+  } else {
+    if (!source.quantity && !source.weight) {
+      errors.push('Produkt ' + type + ' musi mieć kolumnę sztuk lub wagi.');
+    }
+    if (source.warehouse || source.darkroom || source.fridges) {
+      errors.push('Produkt ' + type + ' nie może korzystać z kolumn lokalizacji.');
+    }
+  }
+  return { valid: errors.length === 0, errors: errors, columns: source };
+}
+
 function detectInventoryInputColumnsFromHeaderRow_(rowValues, productType, fallbackColumns) {
   const type = String(productType || '').trim().toUpperCase();
   const detected = cloneProductColumns_(fallbackColumns || getInputColumnsForProductType_(type));
