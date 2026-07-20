@@ -29,6 +29,43 @@ function getInputColumnsForProductType_(productType) {
   };
 }
 
+function getFormulaColumnsForProductType_(productType) {
+  const layout = getConfiguredInventoryLayout_(productType) || {};
+  return (layout.formulaColumns || []).map(normalizeColumnLetter_).filter(Boolean);
+}
+
+function getAllowedInputColumnsForProductType_(productType) {
+  const columns = getInputColumnsForProductType_(productType);
+  return Array.from(new Set([
+    columns.quantity, columns.weight, columns.warehouse,
+    columns.darkroom, columns.fridges
+  ].map(normalizeColumnLetter_).filter(Boolean)));
+}
+
+function isFormulaColumnForProductType_(productType, column) {
+  const wanted = normalizeColumnLetter_(column);
+  return Boolean(wanted && getFormulaColumnsForProductType_(productType).indexOf(wanted) >= 0);
+}
+
+function isAllowedInputColumnForProductType_(productType, column) {
+  const wanted = normalizeColumnLetter_(column);
+  return Boolean(wanted && getAllowedInputColumnsForProductType_(productType).indexOf(wanted) >= 0);
+}
+
+function assertSafeInventoryTargetColumn_(product, column) {
+  const type = String(product && product.type || '').trim().toUpperCase();
+  const wanted = normalizeColumnLetter_(column);
+  const name = String(product && product.name || '').trim() || 'nieznany produkt';
+  if (!wanted) throw new Error('Nie ustalono kolumny docelowej dla produktu „' + name + '”.');
+  if (isFormulaColumnForProductType_(type, wanted)) {
+    throw new Error('Zablokowano zapis produktu „' + name + '” do kolumny obliczeniowej ' + wanted + '.');
+  }
+  if (!isAllowedInputColumnForProductType_(type, wanted)) {
+    throw new Error('Kolumna ' + wanted + ' nie jest dozwolonym polem wejściowym dla typu ' + type + '.');
+  }
+  return wanted;
+}
+
 function cloneProductColumns_(columns) {
   const source = columns || {};
   return {

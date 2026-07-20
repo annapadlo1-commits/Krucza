@@ -49,6 +49,21 @@ function getCanonicalInventoryFormula_(product, column) {
   return entry ? entry.formula : '';
 }
 
+function buildInventoryFormulaCellIndex_(products) {
+  const index = {};
+  (products || []).forEach(product => {
+    getInventoryFormulaContract_(product).forEach(contract => {
+      index[contract.column + product.inventoryRow] = {
+        product: product.name,
+        type: product.type,
+        category: product.category,
+        formula: contract.formula
+      };
+    });
+  });
+  return index;
+}
+
 function normalizeInventoryFormula_(formula) {
   return String(formula || '')
     .replace(/\s+/g, '')

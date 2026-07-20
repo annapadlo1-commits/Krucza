@@ -20,7 +20,6 @@ function onOpen() {
     .addItem('Pokaż diagnostykę', 'showEnterpriseDiagnostics')
     .addItem('Diagnostyka Parsera 4.3', 'showParserDiagnostics')
     .addItem('Audyt formuł Kruczej', 'auditInventoryFormulaCoverageWithDialog')
-    .addItem('Przywróć formuły Kruczej (z backupem)', 'repairInventoryFormulasWithDialog')
     .addSeparator()
     .addItem('Wyczyść cache katalogu', 'clearProductCatalogCache')
     .addItem('Audyt danych produktów', 'runProductDataAudit')
@@ -127,8 +126,8 @@ function activateSheetByName_(sheetName) {
 
 function showAbout() {
   const html = renderInventoryTemplate_('UI_About')
-    .setWidth(520)
-    .setHeight(500);
+    .setWidth(620)
+    .setHeight(760);
 
   SpreadsheetApp.getUi().showModalDialog(
     html,

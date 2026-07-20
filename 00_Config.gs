@@ -7,7 +7,7 @@ const CONFIG = Object.freeze({
     NUMBER: 2,
     NEXT_LOCATION: 'PAWILONY'
   }),
-  VERSION: '4.3.1-KRUCZA',
+  VERSION: '4.3.9-SAFE-MODE-KRUCZA',
   SHEETS: Object.freeze({
     INVENTORY: 'INWENTURA tajniak',
     DICTIONARY: 'Slownik',
@@ -91,6 +91,13 @@ const CONFIG = Object.freeze({
       ])
     })
   ]),
+
+  FORMULA_POLICY: Object.freeze({
+    NUMERIC_TOLERANCE: 0.000000001,
+    BLOCK_SETUP_ON_CONFLICT: true,
+    CREATE_BACKUP_BEFORE_REPAIR: false,
+    AUTOMATIC_REPAIR_ENABLED: false
+  }),
 
   CACHE: Object.freeze({
     CATALOG_KEY: 'inventory_pro_catalog_krucza_v5',
