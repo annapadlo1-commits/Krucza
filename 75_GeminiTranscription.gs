@@ -20,8 +20,13 @@ function configureGeminiTranscription() {
   );
   if (response.getSelectedButton() !== ui.Button.OK) return;
   const key = String(response.getResponseText() || '').trim();
-  if (!/^AIza[\w-]{20,}$/.test(key)) {
-    ui.alert('Klucz nie ma oczekiwanego formatu. Nie zapisano zmian.');
+  if (!isSupportedGeminiKeyFormat_(key)) {
+    ui.alert('Klucz jest niepełny albo ma nieobsługiwany format. Skopiuj cały klucz przyciskiem kopiowania w Google AI Studio. Obsługiwane są nowe klucze AQ. oraz starsze AIza.');
+    return;
+  }
+  const check = checkGeminiApiKey_(key);
+  if (!check.ok) {
+    ui.alert('Google odrzucił klucz. Nie zapisano zmian.\n\n' + check.message);
     return;
   }
   PropertiesService.getScriptProperties()
@@ -30,13 +35,41 @@ function configureGeminiTranscription() {
 }
 
 function showGeminiTranscriptionStatus() {
+  const key = PropertiesService.getScriptProperties()
+    .getProperty(GEMINI_TRANSCRIPTION_PROPERTY_);
+  const check = key ? checkGeminiApiKey_(key) : { ok: false, message: 'Brak zapisanego klucza.' };
   SpreadsheetApp.getUi().alert(
     'Inventory PRO — Gemini',
-    isGeminiTranscriptionConfigured_()
-      ? 'Klucz API jest skonfigurowany. Aplikacja mobilna może wysyłać nagrania do transkrypcji.'
-      : 'Brak klucza API. Użyj opcji „Skonfiguruj transkrypcję Gemini”.',
+    check.ok
+      ? 'Klucz API jest skonfigurowany i został zaakceptowany przez Gemini.'
+      : 'Transkrypcja nie jest gotowa. ' + check.message,
     SpreadsheetApp.getUi().ButtonSet.OK
   );
+}
+
+function isSupportedGeminiKeyFormat_(key) {
+  return /^(?:AIza[\w-]{20,}|AQ\.[A-Za-z0-9_-]{20,})$/.test(String(key || '').trim());
+}
+
+function checkGeminiApiKey_(key) {
+  try {
+    const response = UrlFetchApp.fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1',
+      {
+        method: 'get',
+        headers: { 'x-goog-api-key': key },
+        muteHttpExceptions: true
+      }
+    );
+    const code = response.getResponseCode();
+    if (code >= 200 && code < 300) return { ok: true, message: 'OK' };
+    let body;
+    try { body = JSON.parse(response.getContentText()); } catch (error) { body = {}; }
+    const message = body && body.error && body.error.message;
+    return { ok: false, message: 'HTTP ' + code + ': ' + (message || 'klucz nie został zaakceptowany.') };
+  } catch (error) {
+    return { ok: false, message: String(error && error.message || error) };
+  }
 }
 
 function transcribeInventoryAudio(base64Audio, mimeType, durationSeconds) {
@@ -81,9 +114,10 @@ function transcribeInventoryAudio(base64Audio, mimeType, durationSeconds) {
     }
   };
   const url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
-    GEMINI_TRANSCRIPTION_MODEL_ + ':generateContent?key=' + encodeURIComponent(key);
+    GEMINI_TRANSCRIPTION_MODEL_ + ':generateContent';
   const response = UrlFetchApp.fetch(url, {
     method: 'post',
+    headers: { 'x-goog-api-key': key },
     contentType: 'application/json',
     payload: JSON.stringify(payload),
     muteHttpExceptions: true
