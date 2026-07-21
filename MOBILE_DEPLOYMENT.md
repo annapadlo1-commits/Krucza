@@ -20,9 +20,14 @@ Nowa wersja**, aby zachować ten sam mobilny adres.
 
 PAWILONY i KRUCZA muszą mieć osobne wdrożenia oraz osobne adresy.
 
-## Nagrywanie Gemini
+## Dyktafon i Gemini
 
-- Jedno nagranie może trwać maksymalnie 3 minuty.
+- Nagraj inwenturę w aplikacji **Dyktafon** na iPhonie.
+- Przy nagraniu wybierz **… → Udostępnij → Zachowaj w Plikach**.
+- W Inventory PRO wybierz **Wybierz nagranie** i wskaż zapisany plik.
+- Jedno nagranie może trwać maksymalnie 3 minuty. Dłuższe nagrania podziel
+  w Dyktafonie na krótsze części i importuj kolejno.
+- Aplikacja obsługuje typowy format iPhone `.m4a` oraz WAV, MP3 i AAC.
 - Audio jest przetwarzane w pamięci i nie jest zapisywane w Dysku ani arkuszu.
 - Gemini zwraca tylko transkrypt. Dopasowanie i zapis nadal wykonuje
   kontrolowany parser Inventory PRO po zatwierdzeniu przez użytkownika.
