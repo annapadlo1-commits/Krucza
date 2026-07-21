@@ -40,6 +40,8 @@ function getMobileBootstrap() {
       id: CONFIG.LOCATION.ID,
       name: CONFIG.LOCATION.NAME
     },
+    aiTranscriptionConfigured: isGeminiTranscriptionConfigured_(),
+    maxRecordingSeconds: 180,
     products: resolver.products,
     locations: resolver.locations
   };
