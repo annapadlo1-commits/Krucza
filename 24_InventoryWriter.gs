@@ -202,10 +202,16 @@ function writeSparseWritePlan_(sheet, plan) {
         'Import przerwano bez nadpisywania ręcznej zmiany.'
       );
     }
+    change.previousNumberFormat = range.getNumberFormat();
+    change.appliedNumberFormat = Number.isInteger(Number(change.newValue)) ? '0' : '0.###';
     return { range: range, change: change };
   });
 
-  prepared.forEach(item => item.range.setValue(item.change.newValue));
+  prepared.forEach(item => {
+    item.range
+      .setValue(item.change.newValue)
+      .setNumberFormat(item.change.appliedNumberFormat);
+  });
 }
 
 function rollbackSparseWritePlan_(sheet, plan) {
@@ -222,6 +228,7 @@ function rollbackSparseWritePlan_(sheet, plan) {
       } else {
         range.setValue(change.previousValue);
       }
+      if (change.previousNumberFormat) range.setNumberFormat(change.previousNumberFormat);
       return;
     }
     logWarning(
