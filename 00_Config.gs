@@ -7,7 +7,7 @@ const CONFIG = Object.freeze({
     NUMBER: 2,
     NEXT_LOCATION: 'PAWILONY'
   }),
-  VERSION: '4.5.1-GEMINI-AUTH-KEY-FIX-KRUCZA',
+  VERSION: '4.5.2-GEMINI-CONFIG-SYNC-KRUCZA',
   SHEETS: Object.freeze({
     INVENTORY: 'INWENTURA tajniak',
     DICTIONARY: 'Slownik',

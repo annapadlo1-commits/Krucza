@@ -7,8 +7,20 @@ const GEMINI_TRANSCRIPTION_MODEL_ = 'gemini-2.5-flash-lite';
 const GEMINI_MAX_AUDIO_BYTES_ = 10000000;
 
 function isGeminiTranscriptionConfigured_() {
-  return Boolean(PropertiesService.getScriptProperties()
-    .getProperty(GEMINI_TRANSCRIPTION_PROPERTY_));
+  return Boolean(getGeminiApiKey_());
+}
+
+function getGeminiApiKey_() {
+  const scriptKey = PropertiesService.getScriptProperties()
+    .getProperty(GEMINI_TRANSCRIPTION_PROPERTY_);
+  if (scriptKey) return scriptKey;
+  try {
+    const documentProperties = PropertiesService.getDocumentProperties();
+    return documentProperties && documentProperties
+      .getProperty(GEMINI_TRANSCRIPTION_PROPERTY_) || '';
+  } catch (error) {
+    return '';
+  }
 }
 
 function configureGeminiTranscription() {
@@ -31,12 +43,18 @@ function configureGeminiTranscription() {
   }
   PropertiesService.getScriptProperties()
     .setProperty(GEMINI_TRANSCRIPTION_PROPERTY_, key);
+  try {
+    const documentProperties = PropertiesService.getDocumentProperties();
+    if (documentProperties) documentProperties
+      .setProperty(GEMINI_TRANSCRIPTION_PROPERTY_, key);
+  } catch (error) {
+    console.warn('Nie udało się zapisać zapasowej konfiguracji dokumentu: ' + String(error));
+  }
   ui.alert('Transkrypcja Gemini została skonfigurowana. Zaktualizuj wdrożenie aplikacji mobilnej do nowej wersji.');
 }
 
 function showGeminiTranscriptionStatus() {
-  const key = PropertiesService.getScriptProperties()
-    .getProperty(GEMINI_TRANSCRIPTION_PROPERTY_);
+  const key = getGeminiApiKey_();
   const check = key ? checkGeminiApiKey_(key) : { ok: false, message: 'Brak zapisanego klucza.' };
   SpreadsheetApp.getUi().alert(
     'Inventory PRO — Gemini',
@@ -74,8 +92,7 @@ function checkGeminiApiKey_(key) {
 
 function transcribeInventoryAudio(base64Audio, mimeType, durationSeconds) {
   registerInventorySpreadsheet_();
-  const key = PropertiesService.getScriptProperties()
-    .getProperty(GEMINI_TRANSCRIPTION_PROPERTY_);
+  const key = getGeminiApiKey_();
   if (!key) throw new Error('Transkrypcja Gemini nie została skonfigurowana przez administratora.');
   if (String(mimeType || '') !== 'audio/wav') throw new Error('Nieobsługiwany format nagrania. Wymagany jest WAV.');
   const duration = Number(durationSeconds);
@@ -139,4 +156,8 @@ function transcribeInventoryAudio(base64Audio, mimeType, durationSeconds) {
     durationSeconds: duration,
     model: GEMINI_TRANSCRIPTION_MODEL_
   };
+}
+
+function getGeminiTranscriptionAvailability() {
+  return { configured: isGeminiTranscriptionConfigured_() };
 }
