@@ -15,7 +15,7 @@ const QUALITY_SETTING_DEFINITIONS_ = [
 ];
 
 function ensureQualitySettingsSheet_() {
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const spreadsheet = getInventorySpreadsheet_();
   let sheet = spreadsheet.getSheetByName(CONFIG.SHEETS.SETTINGS);
 
   if (!sheet) {

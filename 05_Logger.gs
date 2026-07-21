@@ -52,7 +52,7 @@ function logError(moduleName, action, error, details, durationMs) {
 }
 
 function getOrCreateTechnicalLogSheet_() {
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const spreadsheet = getInventorySpreadsheet_();
   let sheet = spreadsheet.getSheetByName(CONFIG.SHEETS.TECH_LOG);
 
   if (!sheet) {

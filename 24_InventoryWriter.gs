@@ -5,9 +5,9 @@
  */
 
 function saveImportItems(items) {
-  if (!Array.isArray(items) || !items.length) {
-    throw new Error('Brak pozycji do zapisania.');
-  }
+  const submission = prepareImportSubmission_(items);
+  const activeItems = submission.items;
+  const excludedCount = submission.excludedCount;
 
   const lock = LockService.getDocumentLock();
   const startedAt = Date.now();
@@ -22,7 +22,7 @@ function saveImportItems(items) {
     inventorySheet = sheet;
     if (!sheet) throw new Error('Nie znaleziono arkusza: ' + CONFIG.SHEETS.INVENTORY);
 
-    const containsNewProduct = items.some(item =>
+    const containsNewProduct = activeItems.some(item =>
       item && item.include && String(item.status || '').toUpperCase() === 'NEW_PRODUCT'
     );
     if (containsNewProduct) {
@@ -34,14 +34,14 @@ function saveImportItems(items) {
     const productIndex = runtimeContext.productIndex;
     const qualitySettings = loadQualitySettings_();
     const lastRow = sheet.getLastRow();
-    const usedColumns = collectUsedTargetColumns_(items, productIndex);
+    const usedColumns = collectUsedTargetColumns_(activeItems, productIndex);
     const columnBuffers = loadColumnBuffers_(sheet, usedColumns, lastRow);
 
     const results = [];
     let savedCount = 0;
     let skippedCount = 0;
 
-    items.forEach(item => {
+    activeItems.forEach(item => {
       const result = prepareSingleImportWrite_(
         item, productIndex, columnBuffers, qualitySettings
       );
@@ -65,7 +65,7 @@ function saveImportItems(items) {
     let learnedAliasesCount = 0;
     let protectedFamilyAliasesCount = 0;
     try {
-      const aliasSuggestions = collectAliasSuggestions_(items);
+      const aliasSuggestions = collectAliasSuggestions_(activeItems);
       protectedFamilyAliasesCount = countProtectedAliasSuggestions_(
         aliasSuggestions,
         runtimeContext
@@ -84,6 +84,7 @@ function saveImportItems(items) {
       importId: importId,
       savedCount: savedCount,
       skippedCount: skippedCount,
+      excludedCount: excludedCount,
       learnedAliasesCount: learnedAliasesCount,
       protectedFamilyAliasesCount: protectedFamilyAliasesCount,
       duplicateGroupCount: countSavedDuplicateGroups_(results),
@@ -116,6 +117,37 @@ function saveImportItems(items) {
   } finally {
     lock.releaseLock();
   }
+}
+
+function prepareImportSubmission_(items) {
+  if (!Array.isArray(items) || !items.length) {
+    throw new Error('Brak pozycji do zapisania.');
+  }
+  const activeItems = items.filter(item => item && item.include === true);
+  if (!activeItems.length) {
+    throw new Error('Nie wybrano żadnej pozycji do importu.');
+  }
+  const invalid = activeItems.filter(item =>
+    !String(item.selectedProduct || '').trim() ||
+    !Number.isFinite(Number(item.value)) ||
+    ['PARSE_ERROR', 'NOT_FOUND', 'ERROR', 'AMBIGUOUS'].includes(
+      String(item.status || '').toUpperCase()
+    ) ||
+    String(item.qualityLevel || '').toUpperCase() === 'ERROR' ||
+    (
+      String(item.productType || '').toUpperCase() === 'LOCATION' &&
+      !String(item.location || '').trim()
+    )
+  );
+  if (invalid.length) {
+    throw new Error(
+      'Pozostały aktywne błędy w zaznaczonych pozycjach: ' + invalid.length + '.'
+    );
+  }
+  return {
+    items: activeItems,
+    excludedCount: items.length - activeItems.length
+  };
 }
 
 function buildSparseWritePlan_(results) {

@@ -239,7 +239,7 @@
     .smart-review-source { min-height:76px; resize:vertical; }
     .smart-review-hint { color:#5f6368; font-size:12px; margin-top:5px; }
     .bulk-check { display:flex; align-items:center; gap:6px; white-space:nowrap; font-weight:700; }
-    .review-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0;padding:10px;background:#fff8eb;border:1px solid #f0d4a7;border-radius:10px}.review-tools button.active{background:var(--brand);color:#fff}.issue-count{font-weight:800;color:var(--danger)}.duplicate-details{font-size:11px;line-height:1.35}.hidden-by-filter{display:none!important;}
+    .review-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0;padding:10px;background:#fff8eb;border:1px solid #f0d4a7;border-radius:10px}.review-tools button.active{background:var(--brand);color:#fff}.issue-count{font-weight:800;color:var(--danger)}.duplicate-details{font-size:11px;line-height:1.35}.hidden-by-filter{display:none!important;}.excluded-row{opacity:.52;background:#f3f3f3}.excluded-row td{text-decoration:none}
     .workflow-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:2px 0 0}.workflow-step{display:flex;align-items:center;gap:8px;padding:9px 10px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--muted);font-size:12px;font-weight:700}.workflow-step .step-number{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#eee8e5;color:var(--muted)}.workflow-step.active{border-color:var(--brand);color:var(--brand);box-shadow:0 0 0 2px rgba(139,30,63,.08)}.workflow-step.active .step-number,.workflow-step.done .step-number{background:var(--brand);color:#fff}.workflow-step.done{color:var(--success)}
     .preview-toolbar{display:none;justify-content:center;padding:8px}.load-more{border:1px solid var(--brand);color:var(--brand);background:#fff}.performance-note{margin-left:8px;color:var(--muted);font-size:11px}.status-badge{display:inline-flex;align-items:center;padding:3px 7px;border-radius:999px;font-weight:700}.status-badge.ok{background:#e8f5ed;color:var(--success)}.status-badge.warning{background:#fff4d6;color:#8a5900}.status-badge.error{background:#fdecea;color:var(--danger)}
     .decision-queue{display:none;align-items:center;gap:12px;padding:11px 13px;border:1px solid #e7d5db;border-radius:10px;background:#fff}.decision-copy{flex:1}.decision-title{font-weight:800;color:var(--brand)}.decision-meta{font-size:12px;color:var(--muted);margin-top:3px}.decision-progress{width:180px;height:8px;border-radius:999px;overflow:hidden;background:#eee8e5}.decision-progress span{display:block;height:100%;background:var(--brand);transition:width .2s}.merged-note{padding:6px 8px;border-radius:7px;background:#fff4d6;color:#8a5900;font-weight:700}.previous-comparison{margin-top:4px;font-size:11px;color:var(--muted)}
@@ -560,9 +560,8 @@
 
     function toggleAllImport(checked) {
       previewItems.forEach((item, index) => {
-        if (!['ERROR', 'PARSE_ERROR', 'NOT_FOUND'].includes(item.status)) {
-          item.include = Boolean(checked);
-        }
+        item.include = Boolean(checked);
+        if (!item.include) item.learnAlias = false;
       });
       document.querySelectorAll('input[data-bulk-role="import"]').forEach(input => {
         const index = Number(input.closest('tr').dataset.index);
@@ -686,6 +685,7 @@
     function createPreviewRow(item, index) {
       const row = document.createElement('tr');
       row.dataset.index = index;
+      row.classList.toggle('excluded-row', !item.include);
 
       row.appendChild(
         createCheckboxCell(item, index)
@@ -746,6 +746,12 @@
       edit.textContent = '✏️ Zmień';
       edit.addEventListener('click', () => openSmartReviewModal(index));
       wrap.appendChild(edit);
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'danger';
+      remove.textContent = '🗑 Usuń wiersz';
+      remove.addEventListener('click', () => removePreviewItem(index));
+      wrap.appendChild(remove);
       if (item.autoMerged && Array.isArray(item.sourceItems) && item.sourceItems.length > 1) {
         const split = document.createElement('button');
         split.type = 'button';
@@ -756,6 +762,21 @@
       }
       cell.appendChild(wrap);
       return cell;
+    }
+
+    function removePreviewItem(index) {
+      const item = previewItems[index];
+      if (!item) return;
+      previewItems.splice(index, 1);
+      previewItems.forEach((entry, entryIndex) => entry.id = entryIndex + 1);
+      recomputePreviewMetadata();
+      renderPreview(previewItems);
+      refreshAllMetadataCells();
+      updateIssueCounters();
+      setFooterMessage(
+        'Usunięto wiersz z importu: ' + (item.originalInput || item.parsedProduct || 'pozycja') + '.',
+        'success'
+      );
     }
 
     function splitMergedItem(index) {
@@ -796,8 +817,14 @@
       input.addEventListener('change', event => {
         previewItems[index].include =
           event.target.checked;
+        if (!previewItems[index].include) previewItems[index].learnAlias = false;
+        const row = event.target.closest('tr');
+        if (row) row.classList.toggle('excluded-row', !previewItems[index].include);
         recomputePreviewMetadata();
         refreshAllMetadataCells();
+        updateBulkCheckboxStates();
+        updateIssueCounters();
+        applyReviewFilter();
       });
 
       cell.appendChild(input);
@@ -1331,6 +1358,7 @@
 
     function isActiveIssue(item) {
       if (!item) return false;
+      if (!item.include) return false;
       if (['PARSE_ERROR','NOT_FOUND','ERROR'].includes(item.status)) return true;
       if (item.status === 'AMBIGUOUS' && !item.selectedProduct) return true;
       if (item.value === null || item.value === '' || !Number.isFinite(Number(item.value))) return true;
@@ -1365,22 +1393,23 @@
     function updateIssueCounters() {
       const activeIssues = previewItems.filter(isActiveIssue).length;
       const blocking = previewItems.filter(isBlockingIssue).length;
+      const excluded = previewItems.filter(item => !item.include).length;
       const ambiguous = previewItems.filter(x=>x.status==='AMBIGUOUS').length;
       const duplicateGroups = new Set(previewItems.filter(x=>x.duplicateWarning).map(x=>[x.selectedProduct,x.productType,x.location,Number.isInteger(Number(x.value))?'WHOLE':'WEIGHT'].join('|'))).size;
       const manual = previewItems.filter(x=>x.manualEdited || ['MANUAL','MANUAL_EDIT'].includes(x.status)).length;
-      document.getElementById('blockingCount').textContent = activeIssues;
+      document.getElementById('blockingCount').textContent = blocking;
       document.getElementById('ambiguousCount').textContent = ambiguous;
       document.getElementById('duplicateCount').textContent = duplicateGroups;
       document.getElementById('manualCount').textContent = manual;
       const queue = document.getElementById('decisionQueue');
       const queueMeta = document.getElementById('decisionMeta');
       const queueBar = document.getElementById('decisionProgressBar');
-      const totalReviewed = previewItems.length;
+      const totalReviewed = previewItems.filter(item => item.include).length;
       const resolved = Math.max(0, totalReviewed - activeIssues);
       if (queue) queue.style.display = totalReviewed ? 'flex' : 'none';
       if (queueMeta) queueMeta.textContent = activeIssues
         ? 'Pozostało ' + activeIssues + ' pozycji wymagających decyzji. Rozwiązano ' + resolved + ' z ' + totalReviewed + '.'
-        : 'Wszystkie pozycje zostały sprawdzone. Import jest gotowy do zapisu.';
+        : 'Wszystkie zaznaczone pozycje są gotowe. Pominięto: ' + excluded + '.';
       if (queueBar) queueBar.style.width = (totalReviewed ? Math.round(resolved / totalReviewed * 100) : 0) + '%';
       const save = document.getElementById('saveButton');
       if (save) {
@@ -1725,6 +1754,8 @@
               result.skippedCount +
               ', nowe aliasy: ' +
               (result.learnedAliasesCount || 0) +
+              ', wykluczono: ' +
+              (result.excludedCount || 0) +
               ', aliasy rodzinne pozostawione jako wybór: ' +
               (result.protectedFamilyAliasesCount || 0) +
               ', grupy duplikatow: ' +

@@ -1,4 +1,5 @@
 function onOpen() {
+  registerInventorySpreadsheet_();
   const ui = SpreadsheetApp.getUi();
 
   const reportingMenu = ui.createMenu('Raportowanie')

@@ -25,6 +25,26 @@ function showImport() {
   );
 }
 
+function doGet() {
+  return renderInventoryTemplate_('UI_Mobile')
+    .setTitle('Inventory PRO — ' + CONFIG.LOCATION.NAME)
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover');
+}
+
+function getMobileBootstrap() {
+  registerInventorySpreadsheet_();
+  const resolver = getProductResolverData('');
+  return {
+    version: CONFIG.VERSION,
+    location: {
+      id: CONFIG.LOCATION.ID,
+      name: CONFIG.LOCATION.NAME
+    },
+    products: resolver.products,
+    locations: resolver.locations
+  };
+}
+
 function showParserDiagnostics() {
   const html = renderInventoryTemplate_('UI_ParserDiagnostics')
     .setWidth(1180)
