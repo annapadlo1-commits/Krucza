@@ -3,7 +3,10 @@
  * Klucz jest przechowywany wyłącznie w Script Properties.
  */
 const GEMINI_TRANSCRIPTION_PROPERTY_ = 'INVENTORY_PRO_GEMINI_API_KEY';
-const GEMINI_TRANSCRIPTION_MODEL_ = 'gemini-2.5-flash-lite';
+const GEMINI_TRANSCRIPTION_MODELS_ = Object.freeze([
+  'gemini-3.5-flash',
+  'gemini-3.1-flash-lite'
+]);
 const GEMINI_MAX_AUDIO_BYTES_ = 10000000;
 
 function isGeminiTranscriptionConfigured_() {
@@ -130,18 +133,28 @@ function transcribeInventoryAudio(base64Audio, mimeType, durationSeconds) {
       responseMimeType: 'text/plain'
     }
   };
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
-    GEMINI_TRANSCRIPTION_MODEL_ + ':generateContent';
-  const response = UrlFetchApp.fetch(url, {
-    method: 'post',
-    headers: { 'x-goog-api-key': key },
-    contentType: 'application/json',
-    payload: JSON.stringify(payload),
-    muteHttpExceptions: true
-  });
-  const code = response.getResponseCode();
-  let body;
-  try { body = JSON.parse(response.getContentText()); } catch (error) { body = {}; }
+  let body = {};
+  let code = 0;
+  let selectedModel = '';
+  for (let modelIndex = 0; modelIndex < GEMINI_TRANSCRIPTION_MODELS_.length; modelIndex++) {
+    const model = GEMINI_TRANSCRIPTION_MODELS_[modelIndex];
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
+      model + ':generateContent';
+    const response = UrlFetchApp.fetch(url, {
+      method: 'post',
+      headers: { 'x-goog-api-key': key },
+      contentType: 'application/json',
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    });
+    code = response.getResponseCode();
+    try { body = JSON.parse(response.getContentText()); } catch (error) { body = {}; }
+    if (code >= 200 && code < 300) {
+      selectedModel = model;
+      break;
+    }
+    if (code !== 404) break;
+  }
   if (code < 200 || code >= 300) {
     const apiMessage = body && body.error && body.error.message;
     throw new Error('Gemini nie wykonał transkrypcji (HTTP ' + code + '). ' +
@@ -154,7 +167,7 @@ function transcribeInventoryAudio(base64Audio, mimeType, durationSeconds) {
   return {
     transcript: transcript,
     durationSeconds: duration,
-    model: GEMINI_TRANSCRIPTION_MODEL_
+    model: selectedModel
   };
 }
 
